@@ -34,6 +34,8 @@ Multi-step workflow for managing Wise transfers
 
 import re
 import json
+import uuid
+import requests
 import streamlit as st
 import transfer_wise as wise
 from config import BASE_CURRENCY_OPTIONS, ACCOUNT_CURRENCY_OPTIONS, COUNTRY_CODE_OPTIONS, SUPPORTED_CURRENCIES
@@ -89,9 +91,11 @@ if "show_transfer_output_modal" not in st.session_state:
 if "show_fee_breakdown_modal" not in st.session_state:
     st.session_state.show_fee_breakdown_modal = False
 if "transfer_api_input" not in st.session_state:
-    st.session_state.transfer_api_input = None
-if "transfer_api_output" not in st.session_state:
-    st.session_state.transfer_api_output = None
+    st.session_state.show_fee_breakdown_modal = False
+if "show_transfer_details_modal" not in st.session_state:
+    st.session_state.show_transfer_details_modal = False
+if "transfer_debug_info" not in st.session_state:
+    st.session_state.transfer_debug_info = []
 if "profile_balances" not in st.session_state:
     st.session_state.profile_balances = []
 if "quote_created" not in st.session_state:
@@ -113,8 +117,8 @@ def close_all_modals(except_modal: str = None):
         "show_profile_info_modal",
         "show_recipient_info_modal",
         "show_quote_info_modal",
-        "show_transfer_input_modal",
-        "show_transfer_output_modal",
+        "show_quote_info_modal",
+        "show_transfer_details_modal",
         "show_fee_breakdown_modal",
     ]
     for key in modal_keys:
@@ -531,12 +535,41 @@ with st.sidebar:
     st.divider()
     
     # Step 3.4 - Base currency selector
-    st.subheader("⚙️ Settings")
     st.session_state.base_currency = st.selectbox(
         "Base Currency",
         options=BASE_CURRENCY_OPTIONS,
         index=BASE_CURRENCY_OPTIONS.index(st.session_state.base_currency)
     )
+
+@st.dialog("📝 Transfer API Details")
+def show_transfer_details_dialog():
+    debug_info = st.session_state.transfer_debug_info
+    
+    if not debug_info:
+        st.info("No API details available yet.")
+        if st.button("Close", use_container_width=True, key="close_transfer_details_empty"):
+             close_modal("show_transfer_details_modal")
+             st.rerun()
+        return
+
+    st.subheader("API Call Sequence")
+    
+    for i, step in enumerate(debug_info):
+        with st.expander(f"Step {i+1}: {step['name']}", expanded=True):
+            st.markdown("**URL:**")
+            st.code(step['url'], language="bash")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Input Payload:**")
+                st.json(step['input'])
+            with col2:
+                st.markdown("**Output Response:**")
+                st.json(step['output'])
+    
+    if st.button("Close", use_container_width=True, key="close_transfer_details"):
+        close_modal("show_transfer_details_modal")
+        st.rerun()
 
 
 # =============================================================================
@@ -885,80 +918,71 @@ if st.session_state.selected_recipient and st.session_state.selected_profile:
         reference = st.text_input("Transfer Reference (optional)", max_chars=35)
         
         # Step 7.3.0 - Transfer button with input/output info icons
-        transfer_btn_col, input_info_col, output_info_col = st.columns([2, 0.3, 0.3])
+        transfer_btn_col, output_info_col = st.columns([0.85, 0.15])
         
         with transfer_btn_col:
-            transfer_clicked = st.button("🚀 Create & Fund Transfer", type="primary", use_container_width=True)
-        with input_info_col:
-            # Step 7.3.0.0.1 - Close all other dialogs before opening (See dialog guidelines at top of file)
-            if st.button("ℹ️", key="transfer_input_btn", help="View API input JSON"):
-                open_modal("show_transfer_input_modal")
+             transfer_clicked = st.button("💸 Create & Fund Transfer", type="primary", use_container_width=True, key="create_fund_btn")
+
         with output_info_col:
-            # Step 7.3.0.0.2 - Close all other dialogs before opening (See dialog guidelines at top of file)
-            if st.button("📤", key="transfer_output_btn", help="View API output JSON"):
-                open_modal("show_transfer_output_modal")
+             if st.button("ℹ️", key="transfer_preview_btn", help="View API details (Input/Output)"):
+                 if st.session_state.transfer_debug_info:
+                     open_modal("show_transfer_details_modal")
+                 else:
+                     st.info("No API details yet. Create a transfer first.")
         
         # Step 7.3.0.1 - Transfer API input dialog (See dialog guidelines at top of file)
         # Step 7.3.0.1 - Transfer API input/output items are handled in Step 8 (Global Dialog Manager)
         pass
         
         if transfer_clicked:
+            st.session_state.transfer_debug_info = [] # Reset debug info
+            current_step = "Initialization"
+            
             try:
-                # Step 7.3.1 - Update quote with recipient
+                # Step 7.3.1 - Do transfer
                 quote_id = quote.get("id")
                 recipient_id = recipient.get("id")
-                
-                updated_quote, update_url = wise.update_quote_with_recipient(
+                # Removed premature transfer_id access which caused NameError
+
+                # Step 7.3.1.1 - Update quote with recipient
+                current_step = "Update Quote with Recipient"
+                updated_quote, update_url, update_payload = wise.update_quote_with_recipient(
                     profile_id=profile_id,
                     quote_id=quote_id,
                     recipient_id=recipient_id
                 )
-                
-                # Step 7.3.2 - Build transfer input payload for debugging
-                import uuid
-                transfer_input_payload = {
-                    "targetAccount": recipient_id,
-                    "quoteUuid": quote_id,
-                    "customerTransactionId": "(generated UUID)",
-                    "details": {"reference": reference}
-                }
-                st.session_state.transfer_api_input = {
-                    "update_quote": {
-                        "profile_id": profile_id,
-                        "quote_id": quote_id,
-                        "recipient_id": recipient_id
-                    },
-                    "create_transfer": transfer_input_payload,
-                    "fund_transfer": {
-                        "profile_id": profile_id,
-                        "transfer_id": "(from create_transfer response)",
-                        "payload": {"type": "BALANCE"}
-                    }
-                }
-                
-                # Step 7.3.3 - Create transfer
-                transfer, transfer_url = wise.create_transfer(
+                st.session_state.transfer_debug_info.append({
+                    "name": current_step,
+                    "url": update_url,
+                    "input": update_payload,
+                    "output": updated_quote
+                })
+
+                # Step 7.3.1.2 - Create transfer
+                current_step = "Create Transfer"
+                transfer, transfer_url, transfer_payload = wise.create_transfer(
                     quote_id=quote_id,
                     recipient_id=recipient_id,
                     reference=reference
                 )
+                st.session_state.transfer_debug_info.append({
+                    "name": current_step,
+                    "url": transfer_url,
+                    "input": transfer_payload,
+                    "output": transfer
+                })
                 
                 transfer_id = transfer.get("id")
-                
-                # Step 7.3.4 - Fund transfer from balance
-                funding, fund_url = wise.fund_transfer(profile_id, transfer_id)
-                
-                # Step 7.3.5 - Store output for debugging
-                st.session_state.transfer_api_output = {
-                    "create_transfer": {
-                        "response": transfer,
-                        "url": transfer_url
-                    },
-                    "fund_transfer": {
-                        "response": funding,
-                        "url": fund_url
-                    }
-                }
+
+                # Step 7.3.1.3 - Fund transfer from balance
+                current_step = "Fund Transfer"
+                funding, fund_url, fund_payload = wise.fund_transfer(profile_id, transfer_id)
+                st.session_state.transfer_debug_info.append({
+                    "name": current_step,
+                    "url": fund_url,
+                    "input": fund_payload,
+                    "output": funding
+                })
                 
                 # Step 7.3.6 - Save to pending transfers
                 transfer["targetValue"] = quote.get("targetAmount")
@@ -972,13 +996,23 @@ if st.session_state.selected_recipient and st.session_state.selected_profile:
                 # Step 7.3.7 - Clear quote for next transfer
                 st.session_state.current_quote = None
                 
+            except requests.exceptions.HTTPError as e:
+                st.error(f"❌ Error during '{current_step}': {e}")
+                
+                if e.response.status_code == 400 and "insufficient funds" in e.response.text.lower():
+                    st.warning("Funding failed: Insufficient funds in your Wise account.")
+                    st.info("Please add funds to the specific currency balance and try again.")
+                
+                with st.expander("See Error Details"):
+                    st.text(f"Status Code: {e.response.status_code}")
+                    try:
+                        st.json(e.response.json())
+                    except:
+                        st.text(e.response.text)
+                
             except Exception as e:
-                # Step 7.3.8 - Store error in output for debugging
-                st.session_state.transfer_api_output = {
-                    "error": str(e),
-                    "input_used": st.session_state.transfer_api_input
-                }
-                st.error(f"Error creating/funding transfer: {e}")
+                # Step 7.3.9 - Generic error handling
+                st.error(f"❌ Critical Error during '{current_step}': {e}")
         
         # =====================================================================
         # Step 7.4 - Track Transfer Status
@@ -1007,6 +1041,11 @@ if st.session_state.selected_recipient and st.session_state.selected_profile:
                 
                 with st.expander("📄 Full Transfer Details"):
                     st.json(transfer)
+            
+            # Show API Details button if we have debug info
+            if st.session_state.transfer_debug_info:
+                if st.button("ℹ️ API Details", help="View input/output for all API calls"):
+                    open_modal("show_transfer_details_modal")
 
 
 # =============================================================================
@@ -1061,25 +1100,8 @@ elif st.session_state.show_quote_info_modal and st.session_state.current_quote:
         subheader=f"Quote ID: {quote.get('id', 'N/A')}"
     )
 
-elif st.session_state.show_transfer_input_modal:
-    show_info_dialog(
-        title="📥 Transfer API Input JSON",
-        modal_key="show_transfer_input_modal",
-        data=st.session_state.transfer_api_input,
-        json_key_prefix="transfer_input",
-        api_endpoint="PATCH ... + POST ... + POST ...",
-        empty_message="No transfer input available."
-    )
-
-elif st.session_state.show_transfer_output_modal:
-    show_info_dialog(
-        title="📤 Transfer API Output JSON",
-        modal_key="show_transfer_output_modal",
-        data=st.session_state.transfer_api_output,
-        json_key_prefix="transfer_output",
-        api_endpoint="POST ... + POST ...",
-        empty_message="No transfer output available."
-    )
+elif st.session_state.show_transfer_details_modal:
+    show_transfer_details_dialog()
 
 # =============================================================================
 # Step 9 - Footer

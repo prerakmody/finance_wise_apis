@@ -347,7 +347,7 @@ def create_quote(
     return response_json, url
 
 
-def update_quote_with_recipient(profile_id: int, quote_id: str, recipient_id: int) -> tuple[dict, str]:
+def update_quote_with_recipient(profile_id: int, quote_id: str, recipient_id: int) -> tuple[dict, str, dict]:
     """
     Update quote with selected recipient to get final pricing.
     PATCH /v3/profiles/{profileId}/quotes/{quoteId}
@@ -362,7 +362,7 @@ def update_quote_with_recipient(profile_id: int, quote_id: str, recipient_id: in
     payload = {"targetAccount": recipient_id}
     response = requests.patch(url, headers=headers, json=payload)
     response.raise_for_status()
-    return response.json(), url
+    return response.json(), url, payload
 
 
 # =============================================================================
@@ -374,7 +374,7 @@ def create_transfer(
     recipient_id: int,
     reference: str = "",
     source_account: Optional[int] = None
-) -> tuple[dict, str]:
+) -> tuple[dict, str, dict]:
     """
     Create a transfer based on a quote.
     POST /v1/transfers
@@ -402,10 +402,10 @@ def create_transfer(
     
     response = requests.post(ENDPOINT_TRANSFERS, headers=HEADERS, json=payload)
     response.raise_for_status()
-    return response.json(), ENDPOINT_TRANSFERS
+    return response.json(), ENDPOINT_TRANSFERS, payload
 
 
-def fund_transfer(profile_id: int, transfer_id: int) -> tuple[dict, str]:
+def fund_transfer(profile_id: int, transfer_id: int) -> tuple[dict, str, dict]:
     """
     Fund transfer from balance.
     POST /v3/profiles/{profileId}/transfers/{transferId}/payments
@@ -414,7 +414,7 @@ def fund_transfer(profile_id: int, transfer_id: int) -> tuple[dict, str]:
     payload = {"type": "BALANCE"}
     response = requests.post(url, headers=HEADERS, json=payload)
     response.raise_for_status()
-    return response.json(), url
+    return response.json(), url, payload
 
 
 def get_transfer_status(transfer_id: int) -> tuple[dict, str]:
