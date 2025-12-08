@@ -30,6 +30,7 @@ ENDPOINT_BALANCES = f"{BASE_URL}/v4/profiles/{{profile_id}}/balances"  # .format
 # Step 5.2 - Account endpoints
 ENDPOINT_ACCOUNTS = f"{BASE_URL}/v2/accounts"
 ENDPOINT_ACCOUNTS_CREATE = f"{BASE_URL}/v1/accounts"
+ENDPOINT_ACCOUNT_REQUIREMENTS = f"{BASE_URL}/v1/account-requirements"
 
 # Step 5.3 - Quote endpoints
 ENDPOINT_QUOTES = f"{BASE_URL}/v3/profiles/{{profile_id}}/quotes"  # .format(profile_id=...)

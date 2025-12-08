@@ -16,6 +16,7 @@ from config import (
     ENDPOINT_BALANCES,
     ENDPOINT_ACCOUNTS,
     ENDPOINT_ACCOUNTS_CREATE,
+    ENDPOINT_ACCOUNT_REQUIREMENTS,
     ENDPOINT_QUOTES,
     ENDPOINT_QUOTE_UPDATE,
     ENDPOINT_TRANSFERS,
@@ -69,14 +70,14 @@ def get_balances(profile_id: int) -> tuple[list, str]:
 
 
 # =============================================================================
-# Step 4 - Account Functions
+# Step 4 - Recipient (Account) Functions
 # =============================================================================
 
-def get_accounts_by_currency(currency: str) -> tuple[list, str]:
+def get_recipients_by_currency(currency: str) -> tuple[list, str]:
     """
     Get existing recipient accounts for a specific currency.
     GET /v2/accounts?currency={currency}
-    Returns list of account dicts.
+    Returns list of recipient dicts.
     """
     params = {"currency": currency}
     response = requests.get(ENDPOINT_ACCOUNTS, headers=HEADERS, params=params)
@@ -91,39 +92,69 @@ def get_accounts_by_currency(currency: str) -> tuple[list, str]:
     return result, response.url
 
 
-def get_all_accounts() -> tuple[dict, dict]:
+def get_all_recipients() -> tuple[dict, dict]:
     """
-    Fetch accounts for ALL supported currencies.
+    Fetch recipients for ALL supported currencies.
     Returns:
-        tuple[dict, dict]: (accounts_by_currency, urls_by_currency)
+        tuple[dict, dict]: (recipients_by_currency, urls_by_currency)
     """
-    accounts_by_currency = {}
+    recipients_by_currency = {}
     urls_by_currency = {}
     for currency in SUPPORTED_CURRENCIES:
         try:
-            accounts, url = get_accounts_by_currency(currency)
-            if accounts:  # Only add if there are accounts
-                accounts_by_currency[currency] = accounts
+            recipients, url = get_recipients_by_currency(currency)
+            if recipients:  # Only add if there are recipients
+                recipients_by_currency[currency] = recipients
                 urls_by_currency[currency] = url
         except requests.exceptions.HTTPError:
             # Skip currencies that fail (e.g., not supported for this profile)
             continue
-    return accounts_by_currency, urls_by_currency
+    return recipients_by_currency, urls_by_currency
 
 
-def create_account(profile_id: int, account_data: dict) -> tuple[dict, str]:
+def get_recipient_requirements(source_currency: str, target_currency: str, source_amount: float) -> tuple[list, str]:
+    """
+    Fetch recipient account requirements for a specific currency pair.
+    GET /v1/account-requirements?source={source}&target={target}&sourceAmount={amount}
+    
+    Args:
+        source_currency: Source currency code (e.g., "USD")
+        target_currency: Target currency code (e.g., "CNY")
+        source_amount: Amount in source currency
+        
+    Returns:
+        tuple[list, str]: (requirements_list, url)
+    """
+    params = {
+        "source": source_currency,
+        "target": target_currency,
+        "sourceAmount": source_amount
+    }
+    response = requests.get(ENDPOINT_ACCOUNT_REQUIREMENTS, headers=HEADERS, params=params)
+    response.raise_for_status()
+    return response.json(), response.url
+
+
+def create_recipient(profile_id: int, recipient_data: dict) -> tuple[dict, str]:
     """
     Create a new recipient account.
     POST /v1/accounts
     
     Args:
-        profile_id: The profile ID to create the account under
-        account_data: Dict with accountHolderName, currency, type, details
+        profile_id: The profile ID to create the recipient under
+        recipient_data: Dict with accountHolderName, currency, type, details, ownedByCustomer
     """
     payload = {
         "profile": profile_id,
-        **account_data
+        "ownedByCustomer": recipient_data.get("ownedByCustomer", False), # Defaulting to false if not provided
+        **recipient_data
     }
+    
+    # Ensure accountHolderName is at top level
+    if "accountHolderName" not in payload and "accountHolderName" in recipient_data.get("details", {}):
+         # If somehow it crept into details, pull it up, though caller should handle this
+         payload["accountHolderName"] = recipient_data["details"].pop("accountHolderName")
+
     response = requests.post(ENDPOINT_ACCOUNTS_CREATE, headers=HEADERS, json=payload)
     response.raise_for_status()
     return response.json(), ENDPOINT_ACCOUNTS_CREATE

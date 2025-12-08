@@ -35,7 +35,7 @@ Multi-step workflow for managing Wise transfers
 import json
 import streamlit as st
 import transfer_wise as wise
-from config import BASE_CURRENCY_OPTIONS, ACCOUNT_CURRENCY_OPTIONS, COUNTRY_CODE_OPTIONS
+from config import BASE_CURRENCY_OPTIONS, ACCOUNT_CURRENCY_OPTIONS, COUNTRY_CODE_OPTIONS, SUPPORTED_CURRENCIES
 
 # =============================================================================
 # Step 1 - Page Configuration
@@ -53,14 +53,14 @@ if "profiles" not in st.session_state:
     st.session_state.profiles = []
 if "selected_profile" not in st.session_state:
     st.session_state.selected_profile = None
-if "accounts_by_currency" not in st.session_state:
-    st.session_state.accounts_by_currency = {}
-if "account_urls" not in st.session_state:
-    st.session_state.account_urls = {}
+if "recipients_by_currency" not in st.session_state:
+    st.session_state.recipients_by_currency = {}
+if "recipient_urls" not in st.session_state:
+    st.session_state.recipient_urls = {}
 if "profile_url" not in st.session_state:
     st.session_state.profile_url = None
-if "selected_account" not in st.session_state:
-    st.session_state.selected_account = None
+if "selected_recipient" not in st.session_state:
+    st.session_state.selected_recipient = None
 if "current_quote" not in st.session_state:
     st.session_state.current_quote = None
 if "current_quote_url" not in st.session_state:
@@ -73,12 +73,12 @@ if "base_currency" not in st.session_state:
     st.session_state.base_currency = "EUR"
 if "previous_profile_id" not in st.session_state:
     st.session_state.previous_profile_id = None
-if "show_new_account_modal" not in st.session_state:
-    st.session_state.show_new_account_modal = False
+if "show_new_recipient_modal" not in st.session_state:
+    st.session_state.show_new_recipient_modal = False
 if "show_profile_info_modal" not in st.session_state:
     st.session_state.show_profile_info_modal = False
-if "show_account_info_modal" not in st.session_state:
-    st.session_state.show_account_info_modal = False
+if "show_recipient_info_modal" not in st.session_state:
+    st.session_state.show_recipient_info_modal = False
 if "show_quote_info_modal" not in st.session_state:
     st.session_state.show_quote_info_modal = False
 if "show_transfer_input_modal" not in st.session_state:
@@ -108,9 +108,9 @@ def close_all_modals(except_modal: str = None):
         except_modal: The modal key to keep open (optional)
     """
     modal_keys = [
-        "show_new_account_modal",
+        "show_new_recipient_modal",
         "show_profile_info_modal",
-        "show_account_info_modal",
+        "show_recipient_info_modal",
         "show_quote_info_modal",
         "show_transfer_input_modal",
         "show_transfer_output_modal",
@@ -225,6 +225,247 @@ def show_info_dialog(title: str, modal_key: str, data: dict, json_key_prefix: st
         _dialog()
 
 # =============================================================================
+# Step 2.4 - specific Dialog Function Definitions
+# =============================================================================
+@st.dialog("➕ Create New Recipient")
+def show_create_recipient_dialog():
+    if not st.session_state.selected_profile:
+        st.error("No profile selected")
+        return
+
+    profile_id = st.session_state.selected_profile["id"]
+    
+    # Step 1: Select Target Currency
+    target_currency = st.selectbox("Target Currency", SUPPORTED_CURRENCIES, key="modal_target_currency")
+    
+    # Step 2: Determine Source Currency (Dominant Balance)
+    source_currency = "USD" # Default
+    source_amount = 1.0 # Default to 1 unit as per requirements
+    
+    if st.session_state.profile_balances:
+        try:
+             # simple heuristic: just take the one with the highest number. 
+            dominant_balance = max(st.session_state.profile_balances, key=lambda b: b.get("amount", {}).get("value", 0))
+            source_currency = dominant_balance.get("amount", {}).get("currency", "USD")
+        except Exception:
+            pass
+            
+    # Display context
+    st.caption(f"Fetching requirements for {source_currency} -> {target_currency} (Amount: {source_amount})")
+
+    # Step 3: Fetch Requirements
+    req_key = f"req_{source_currency}_{target_currency}"
+    
+    if req_key not in st.session_state:
+        try:
+            requirements, _ = wise.get_recipient_requirements(source_currency, target_currency, source_amount)
+            st.session_state[req_key] = requirements
+        except Exception as e:
+            st.error(f"Error fetching requirements: {e}")
+            st.session_state[req_key] = []
+
+    requirements = st.session_state.get(req_key, [])
+    
+    # Step 4: Handle Multiple Recipient Types (Tabs)
+    selected_requirement = None
+    
+    if not requirements:
+        st.warning("No requirements found or error occurred.")
+    else:
+        # If multiple types (e.g., Local vs Swift vs Email), let user choose
+        if len(requirements) > 1:
+            req_options = {req.get("title", f"Option {i}"): i for i, req in enumerate(requirements)}
+            selected_label = st.radio("Recipient Type", list(req_options.keys()), horizontal=True, key=f"req_type_select_{req_key}")
+            selected_index = req_options[selected_label]
+            selected_requirement = requirements[selected_index]
+        else:
+            selected_requirement = requirements[0]
+            st.markdown(f"**{selected_requirement.get('title', 'Recipient Details')}**")
+
+    # Step 5: Render Dynamic Form
+    form_data = {}
+    has_name_field = False
+    
+    if selected_requirement:
+        # Determine the form 'type' (e.g. 'indian', 'aba')
+        method_type = selected_requirement.get("type", "")
+        
+        fields_container = selected_requirement.get("fields", [])
+        for field_container_idx, field_container in enumerate(fields_container):
+            group = field_container.get("group", [])
+            for field_idx, field_def in enumerate(group):
+                key = field_def.get("key")
+                label = field_def.get("name", key)
+                field_type = field_def.get("type", "text")
+                required = field_def.get("required", False)
+                options = field_def.get("valuesAllowed", []) 
+                
+                # Check if this is the name field
+                if key == "accountHolderName":
+                    has_name_field = True
+                
+                # Make key unique per method type AND position to avoid collisions
+                # We use field_container_idx and field_idx to be absolutely sure
+                widget_key = f"field_{req_key}_{method_type}_{field_container_idx}_{field_idx}_{key}" 
+                label_display = f"{label} {'*' if required else ''}"
+                
+                if field_type == "select" and options:
+                    select_options = {}
+                    for opt in options:
+                        if isinstance(opt, dict):
+                            select_options[opt.get("name")] = opt.get("key")
+                        else:
+                            select_options[str(opt)] = str(opt)
+                    
+                    selected_name = st.selectbox(label_display, list(select_options.keys()), key=widget_key)
+                    form_data[key] = select_options.get(selected_name)
+                    
+                elif field_type == "radio" and options:
+                     select_options = {}
+                     for opt in options:
+                        if isinstance(opt, dict):
+                            select_options[opt.get("name")] = opt.get("key")
+                        else:
+                            select_options[str(opt)] = str(opt)
+                     selected_name = st.radio(label_display, list(select_options.keys()), key=widget_key)
+                     form_data[key] = select_options.get(selected_name)
+
+                elif field_type == "text":
+                     val = st.text_input(label_display, key=widget_key)
+                     form_data[key] = val
+                else:
+                     val = st.text_input(label_display, key=widget_key)
+                     form_data[key] = val
+
+    # Step 6: Add Missing Fundamental Fields
+    st.divider()
+    st.subheader("General Recipient Info")
+    
+    # 6.1: Recipient Name (if not in dynamic fields)
+    if not has_name_field:
+        recipient_name = st.text_input("Recipient Full Name *", key="static_recipient_name")
+        form_data["accountHolderName"] = recipient_name
+    
+    # 6.2: Owned by customer
+    owned_by_customer = st.checkbox(
+        "Is this account owned by you?", 
+        value=False, 
+        help="Check this if you are sending money to your own bank account.",
+        key="static_owned_by_customer"
+    )
+    form_data["ownedByCustomer"] = owned_by_customer
+
+    st.divider()
+    
+    col_create, col_cancel = st.columns(2)
+    with col_create:
+        if st.button("Create Recipient", type="primary", use_container_width=True):
+            try:
+                if not selected_requirement:
+                    st.error("No requirement selected")
+                else:
+                    target_payload = {
+                        "currency": target_currency,
+                        "type": selected_requirement.get("type", ""), 
+                        "profile": profile_id,
+                        "ownedByCustomer": form_data.get("ownedByCustomer", False)
+                    }
+
+                    # Construct nested 'details' object
+                    details = {}
+                    top_level_keys = ["accountHolderName", "currency", "type", "profile", "ownedByCustomer"]
+                    
+                    for key, value in form_data.items():
+                        if value is None or value == "": continue 
+                        
+                        # accountHolderName should be at root usually, but sometimes detailed.
+                        # creating_recipient in transfer_wise.py helps handle this too.
+                        if key in top_level_keys:
+                            target_payload[key] = value
+                        elif "." in key:
+                             # Handle dot notation e.g. details.address.city
+                             parts = key.split(".")
+                             # Assuming standard wise structure where parts[0] is usually details
+                             if parts[0] == "details":
+                                 current_level = details
+                                 for part in parts[1:-1]:
+                                     if part not in current_level:
+                                         current_level[part] = {}
+                                     current_level = current_level[part]
+                                 current_level[parts[-1]] = value
+                             elif parts[0] == "address":
+                                 # Put address inside details.address
+                                 if "address" not in details: details["address"] = {}
+                                 details["address"][parts[1]] = value
+                        else:
+                             details[key] = value
+                    
+                    if details:
+                        target_payload["details"] = details
+                    
+                    new_recipient, _ = wise.create_recipient(profile_id, target_payload)
+                    
+                    # Store result and show success
+                    st.session_state.selected_recipient = new_recipient
+                    st.success("✅ Recipient created successfully!")
+                    
+                    # Show the created JSON nicely
+                    st.json(new_recipient)
+                    
+                    if st.button("Close & Use Recipient", type="primary", key="close_success_btn"):
+                         st.session_state.show_new_recipient_modal = False
+                         st.session_state.recipients_by_currency, st.session_state.recipient_urls = wise.get_all_recipients()
+                         st.rerun()
+
+            except Exception as e:
+                st.error(f"Error creating recipient: {e}")
+
+    with col_cancel:
+        if st.button("Cancel", use_container_width=True):
+            close_modal("show_new_recipient_modal")
+            st.rerun()
+
+@st.dialog("💰 Fee Breakdown")
+def show_fee_breakdown_dialog():
+    quote = st.session_state.current_quote
+    if not quote:
+        st.error("No quote found")
+        return
+
+    payment_options = quote.get("paymentOptions", [])
+    
+    # Calculate display values again for the modal
+    fee_display = "N/A"
+    delivery_estimate = "N/A"
+    for option in payment_options:
+        if option.get("payIn") == "BALANCE":
+            fee_obj = option.get("fee", {})
+            fee_display = f"{fee_obj.get('total', 'N/A')} {fee_obj.get('currency', '')}"
+            delivery_estimate = option.get("estimatedDelivery", "N/A")
+            break
+            
+    st.code("POST /v3/profiles/{profileId}/quotes", language="bash")
+    st.write(f"**Fee**: {fee_display}")
+    st.write(f"**Delivery Estimate**: {delivery_estimate}")
+    st.divider()
+    st.subheader("All Payment Options")
+    for option in payment_options:
+        pay_in = option.get("payIn", "Unknown")
+        pay_out = option.get("payOut", "Unknown")
+        fee_obj = option.get("fee", {})
+        fee_total = fee_obj.get("total", "N/A")
+        target_amt = option.get("targetAmount", "N/A")
+        with st.expander(f"{pay_in} → {pay_out}"):
+            st.write(f"**Target Amount**: {target_amt}")
+            st.write(f"**Fee**: {fee_total}")
+            st.write(f"**Estimated Delivery**: {option.get('estimatedDelivery', 'N/A')}")
+    
+    if st.button("Close", use_container_width=True, key="close_fee_modal"):
+        close_modal("show_fee_breakdown_modal")
+        st.rerun()
+
+
+# =============================================================================
 # Step 3 - Sidebar: Pending Transfers
 # =============================================================================
 with st.sidebar:
@@ -332,11 +573,11 @@ if st.session_state.profiles:
             # Step 5.2.0.1 - Reset all modal states on profile change
             close_all_modals()
             try:
-                st.session_state.accounts_by_currency, st.session_state.account_urls = wise.get_all_accounts()
+                st.session_state.recipients_by_currency, st.session_state.recipient_urls = wise.get_all_recipients()
                 # Step 5.2.0.2 - Fetch and store profile balances for source currency dropdown
                 st.session_state.profile_balances, _ = wise.get_balances(current_profile_id)
             except Exception as e:
-                st.error(f"Error auto-loading accounts: {e}")
+                st.error(f"Error auto-loading recipients: {e}")
     
     profile = st.session_state.selected_profile
     
@@ -346,18 +587,8 @@ if st.session_state.profiles:
             open_modal("show_profile_info_modal")
     
     # Step 5.2.2 - Profile info dialog modal (See dialog guidelines at top of file)
-    # Step 5.2.2 - Profile info dialog modal (Refactored to use generic helper)
-    profile = st.session_state.selected_profile
-    api_url = st.session_state.profile_url or "GET /v1/profiles"
-    
-    show_info_dialog(
-        title="Profile Details",
-        modal_key="show_profile_info_modal",
-        data=profile,
-        json_key_prefix="profile_info",
-        api_endpoint=f"Used URL: {api_url}",
-        subheader=f"Profile ID: {profile['id']}"
-    )
+    # Step 5.2.2 - Profile info dialog modal is handled in Step 8 (Global Dialog Manager)
+    pass
     
     # Step 5.3 - Display available balances on the right
     with balance_col:
@@ -384,11 +615,11 @@ else:
     st.warning("Could not load profiles. Please check your API token.")
 
 # =============================================================================
-# Step 6 - Step 1: Account Selection / Creation
+# Step 6 - Step 1: Recipient Selection / Creation
 # =============================================================================
 if st.session_state.selected_profile:
     st.divider()
-    st.header("Step 1: Select or Create Account")
+    st.header("Step 1: Select or Create Recipient")
     
     profile_id = st.session_state.selected_profile["id"]
     
@@ -398,145 +629,83 @@ if st.session_state.selected_profile:
     with col2:
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            if st.button("🔄", help="Refresh accounts"):
+            if st.button("🔄", help="Refresh recipients"):
                 # Step 6.0.1.1 - Reset all modal states on refresh
                 close_all_modals()
                 try:
-                    st.session_state.accounts_by_currency, st.session_state.account_urls = wise.get_all_accounts()
-                    st.toast(f"Refreshed: {len(st.session_state.accounts_by_currency)} currencies")
+                    st.session_state.recipients_by_currency, st.session_state.recipient_urls = wise.get_all_recipients()
+                    st.toast(f"Refreshed: {len(st.session_state.recipients_by_currency)} currencies")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
         # Step 6.0.2 - Add button (exclusive - close other modals first)
         with btn_col2:
-            if st.button("➕", help="Add new account"):
-                open_modal("show_new_account_modal")
+            if st.button("➕", help="Add new recipient"):
+                open_modal("show_new_recipient_modal")
     
-    # Step 6.1 - Display existing accounts grouped by currency
+    # Step 6.1 - Display existing recipients grouped by currency
     with col1:
-        if st.session_state.accounts_by_currency:
-            # Step 6.2 - Build flat list of accounts with currency info
-            all_accounts = []
-            for currency, accounts in st.session_state.accounts_by_currency.items():
-                for acc in accounts:
+        if st.session_state.recipients_by_currency:
+            # Step 6.2 - Build flat list of recipients with currency info
+            all_recipients = []
+            for currency, recipients in st.session_state.recipients_by_currency.items():
+                for acc in recipients:
                     # Step 6.2.1 - Create new dict to avoid mutating original
                     acc_with_currency = dict(acc)
                     acc_with_currency["_currency"] = currency
-                    all_accounts.append(acc_with_currency)
+                    all_recipients.append(acc_with_currency)
             
-            if all_accounts:
+            if all_recipients:
                 # Step 6.2.2 - Build display label using name.fullName or accountSummary
-                def get_account_label(acc):
+                def get_recipient_label(acc):
                     name_obj = acc.get("name", {})
                     full_name = name_obj.get("fullName", "") if isinstance(name_obj, dict) else ""
                     display_name = full_name or acc.get("accountHolderName", "Unknown")
                     summary = acc.get("accountSummary", "")
                     return f"{display_name} - {acc['_currency']} ({summary})"
                 
-                account_options = {
-                    get_account_label(acc): acc
-                    for acc in all_accounts
+                recipient_options = {
+                    get_recipient_label(acc): acc
+                    for acc in all_recipients
                 }
                 
-                # Step 6.2.3 - Layout: Account dropdown | Info button
+                # Step 6.2.3 - Layout: Recipient dropdown | Info button
                 acc_dropdown_col, acc_info_col = st.columns([0.9, 0.1])
                 
                 with acc_dropdown_col:
                     selected_acc_label = st.selectbox(
-                        "Choose Existing Account",
-                        options=list(account_options.keys()),
+                        "Choose Existing Recipient",
+                        options=list(recipient_options.keys()),
                         label_visibility="collapsed"
                     )
-                    st.session_state.selected_account = account_options[selected_acc_label]
+                    st.session_state.selected_recipient = recipient_options[selected_acc_label]
                 
-                # Step 6.3 - Info button to show account modal (exclusive - close other modals first)
+                # Step 6.3 - Info button to show recipient modal (exclusive - close other modals first)
                 with acc_info_col:
-                    if st.button("ℹ️", key="account_info_btn", help="View account details"):
-                        open_modal("show_account_info_modal")
+                    if st.button("ℹ️", key="recipient_info_btn", help="View recipient details"):
+                        open_modal("show_recipient_info_modal")
                 
-                # Step 6.3.1 - Account info dialog modal (See dialog guidelines at top of file)
-                # Step 6.3.1 - Account info dialog modal (Refactored to use generic helper)
-                acc = st.session_state.selected_account
-                name_obj = acc.get("name", {})
-                display_name = name_obj.get("fullName", "") if isinstance(name_obj, dict) else acc.get("accountHolderName", "Unknown")
-                acc_currency = acc.get("_currency")
-                api_url = st.session_state.account_urls.get(acc_currency, "GET /v2/accounts")
-                
-                show_info_dialog(
-                    title="Account Details",
-                    modal_key="show_account_info_modal",
-                    data=acc,
-                    json_key_prefix="account_info",
-                    api_endpoint=f"Used URL: {api_url}",
-                    subheader=f"{display_name}"
-                )
+                # Step 6.3.1 - Recipient info dialog modal is handled in Step 8 (Global Dialog Manager)
+                pass
             else:
-                st.warning("No accounts found. Create one below.")
+                st.warning("No recipients found. Create one below.")
         else:
-            st.info("Use 🔄 to refresh accounts or ➕ to add a new one")
+            st.info("Use 🔄 to refresh recipients or ➕ to add a new one")
     
-    # Step 6.4 - Create new account modal dialog
-    @st.dialog("➕ Create New Account (IBAN)")
-    def create_account_dialog():
-        st.subheader("New IBAN Account")
-        
-        new_acc_name = st.text_input("Account Holder Name", key="modal_acc_name")
-        new_acc_currency = st.selectbox("Currency", ACCOUNT_CURRENCY_OPTIONS, key="modal_currency")
-        new_acc_iban = st.text_input("IBAN", key="modal_iban")
-        new_acc_city = st.text_input("City", key="modal_city")
-        new_acc_country = st.selectbox("Country Code", COUNTRY_CODE_OPTIONS, key="modal_country")
-        new_acc_postcode = st.text_input("Post Code", key="modal_postcode")
-        new_acc_address = st.text_input("Address (First Line)", key="modal_address")
-        
-        col_create, col_cancel = st.columns(2)
-        with col_create:
-            if st.button("Create Account", type="primary", use_container_width=True):
-                if all([new_acc_name, new_acc_iban, new_acc_city, new_acc_postcode, new_acc_address]):
-                    try:
-                        account_data = {
-                            "accountHolderName": new_acc_name,
-                            "currency": new_acc_currency,
-                            "type": "iban",
-                            "details": {
-                                "address": {
-                                    "city": new_acc_city,
-                                    "countryCode": new_acc_country,
-                                    "postCode": new_acc_postcode,
-                                    "firstLine": new_acc_address
-                                },
-                                "legalType": "PRIVATE",
-                                "IBAN": new_acc_iban
-                            }
-                        }
-                        new_account, _ = wise.create_account(profile_id, account_data)
-                        st.session_state.selected_account = new_account
-                        st.session_state.show_new_account_modal = False
-                        # Refresh accounts list
-                        st.session_state.accounts_by_currency, st.session_state.account_urls = wise.get_all_accounts()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error creating account: {e}")
-                else:
-                    st.warning("Please fill in all fields")
-        with col_cancel:
-            if st.button("Cancel", use_container_width=True):
-                close_modal("show_new_account_modal")
-    
-    # Step 6.4.1 - Show modal if triggered
-    if st.session_state.show_new_account_modal:
-        create_account_dialog()
+    # Step 6.4 - Create new recipient modal dialog is customized in Step 2.4 and called in Step 8
+    pass
 
 
 # =============================================================================
 # Step 7 - Step 2: Transfer Workflow
 # =============================================================================
-if st.session_state.selected_account and st.session_state.selected_profile:
+if st.session_state.selected_recipient and st.session_state.selected_profile:
     st.divider()
     st.header("Step 2: Create Transfer")
     
     profile_id = st.session_state.selected_profile["id"]
-    account = st.session_state.selected_account
-    target_currency = account.get("_currency") or account.get("currency", "EUR")
+    recipient = st.session_state.selected_recipient
+    target_currency = recipient.get("_currency") or recipient.get("currency", "EUR")
     
     # Step 7.0.1 - Build source currency options with balance info from profile balances
     currency_options = []  # Format: "EUR (1,234.56)"
@@ -652,18 +821,8 @@ if st.session_state.selected_account and st.session_state.selected_profile:
         quote = st.session_state.current_quote
         
         # Step 7.2.0.4 - Quote info dialog modal (See dialog guidelines at top of file)
-        # Step 7.2.0.4 - Quote info dialog modal (Refactored to use generic helper)
-        quote = st.session_state.current_quote
-        api_url = st.session_state.current_quote_url or f"POST /v3/profiles/{{profileId}}/quotes"
-        
-        show_info_dialog(
-            title="Quote Details",
-            modal_key="show_quote_info_modal",
-            data=quote,
-            json_key_prefix="quote_info",
-            api_endpoint=f"Used URL: {api_url}",
-            subheader=f"Quote ID: {quote.get('id', 'N/A')}"
-        )
+        # Step 7.2.0.4 - Quote info dialog modal is handled in Step 8 (Global Dialog Manager)
+        pass
         
         # Step 7.2.1 - Extract BOTH source and target amounts from paymentOptions for BALANCE payIn
         payment_options = quote.get("paymentOptions", [])
@@ -691,29 +850,8 @@ if st.session_state.selected_account and st.session_state.selected_profile:
             rate = quote.get("rate", "N/A")
             st.metric("Exchange Rate", f"1 {source_currency} = {rate} {target_currency}")
         
-        # Step 7.2.3 - Fee breakdown dialog modal
-        @st.dialog("💰 Fee Breakdown")
-        def show_fee_breakdown_dialog():
-            st.code("POST /v3/profiles/{profileId}/quotes", language="bash")
-            st.write(f"**Fee**: {fee_display}")
-            st.write(f"**Delivery Estimate**: {delivery_estimate}")
-            st.divider()
-            st.subheader("All Payment Options")
-            for i, option in enumerate(payment_options):
-                pay_in = option.get("payIn", "Unknown")
-                pay_out = option.get("payOut", "Unknown")
-                fee_obj = option.get("fee", {})
-                fee_total = fee_obj.get("total", "N/A")
-                target_amt = option.get("targetAmount", "N/A")
-                with st.expander(f"{pay_in} → {pay_out}"):
-                    st.write(f"**Target Amount**: {target_amt}")
-                    st.write(f"**Fee**: {fee_total}")
-                    st.write(f"**Estimated Delivery**: {option.get('estimatedDelivery', 'N/A')}")
-            if st.button("Close", use_container_width=True, key="close_fee_modal"):
-                close_modal("show_fee_breakdown_modal")
-        
-        if st.session_state.show_fee_breakdown_modal:
-            show_fee_breakdown_dialog()
+        # Step 7.2.3 - Fee breakdown dialog modal is customized in Step 2.4 and called in Step 8
+        pass
         
         # =====================================================================
         # Step 7.3 - Create and Fund Transfer
@@ -737,30 +875,14 @@ if st.session_state.selected_account and st.session_state.selected_profile:
                 open_modal("show_transfer_output_modal")
         
         # Step 7.3.0.1 - Transfer API input dialog (See dialog guidelines at top of file)
-        # Step 7.3.0.1 - Transfer API input/output items (Refactored to use generic helper)
-        show_info_dialog(
-            title="📥 Transfer API Input JSON",
-            modal_key="show_transfer_input_modal",
-            data=st.session_state.transfer_api_input,
-            json_key_prefix="transfer_input",
-            api_endpoint="PATCH /v3/profiles/{profileId}/quotes/{quoteId} + POST /v1/transfers + POST /v3/profiles/{profileId}/transfers/{transferId}/payments",
-            empty_message="No transfer input available yet. Click 'Create & Fund Transfer' first."
-        )
-
-        show_info_dialog(
-            title="📤 Transfer API Output JSON",
-            modal_key="show_transfer_output_modal",
-            data=st.session_state.transfer_api_output,
-            json_key_prefix="transfer_output",
-            api_endpoint="POST /v1/transfers + POST /v3/profiles/{profileId}/transfers/{transferId}/payments",
-            empty_message="No transfer output available yet. Click 'Create & Fund Transfer' first."
-        )
+        # Step 7.3.0.1 - Transfer API input/output items are handled in Step 8 (Global Dialog Manager)
+        pass
         
         if transfer_clicked:
             try:
                 # Step 7.3.1 - Update quote with recipient
                 quote_id = quote.get("id")
-                recipient_id = account.get("id")
+                recipient_id = recipient.get("id")
                 
                 updated_quote, update_url = wise.update_quote_with_recipient(
                     profile_id=profile_id,
@@ -864,7 +986,79 @@ if st.session_state.selected_account and st.session_state.selected_profile:
 
 
 # =============================================================================
-# Step 8 - Footer
+# Step 8 - Global Dialog Manager (Render AFTER all logic)
+# =============================================================================
+# This section ensures that we checks the status of all modals AT THE END of the script
+# This prevents race conditions where a dialog is rendered before a button click
+# closes it, causing "multiple dialogs" errors.
+
+if st.session_state.show_new_recipient_modal:
+    show_create_recipient_dialog()
+
+elif st.session_state.show_fee_breakdown_modal:
+    show_fee_breakdown_dialog()
+
+elif st.session_state.show_profile_info_modal and st.session_state.selected_profile:
+    profile = st.session_state.selected_profile
+    api_url = st.session_state.profile_url or "GET /v1/profiles"
+    show_info_dialog(
+        title="Profile Details",
+        modal_key="show_profile_info_modal",
+        data=profile,
+        json_key_prefix="profile_info",
+        api_endpoint=f"Used URL: {api_url}",
+        subheader=f"Profile ID: {profile['id']}"
+    )
+
+elif st.session_state.show_recipient_info_modal and st.session_state.selected_recipient:
+    acc = st.session_state.selected_recipient
+    name_obj = acc.get("name", {})
+    display_name = name_obj.get("fullName", "") if isinstance(name_obj, dict) else acc.get("accountHolderName", "Unknown")
+    acc_currency = acc.get("_currency")
+    api_url = st.session_state.recipient_urls.get(acc_currency, "GET /v2/accounts")
+    show_info_dialog(
+        title="Recipient Details",
+        modal_key="show_recipient_info_modal",
+        data=acc,
+        json_key_prefix="recipient_info",
+        api_endpoint=f"Used URL: {api_url}",
+        subheader=f"{display_name}"
+    )
+
+elif st.session_state.show_quote_info_modal and st.session_state.current_quote:
+    quote = st.session_state.current_quote
+    api_url = st.session_state.current_quote_url or "POST /v3/profiles/{profileId}/quotes"
+    show_info_dialog(
+        title="Quote Details",
+        modal_key="show_quote_info_modal",
+        data=quote,
+        json_key_prefix="quote_info",
+        api_endpoint=f"Used URL: {api_url}",
+        subheader=f"Quote ID: {quote.get('id', 'N/A')}"
+    )
+
+elif st.session_state.show_transfer_input_modal:
+    show_info_dialog(
+        title="📥 Transfer API Input JSON",
+        modal_key="show_transfer_input_modal",
+        data=st.session_state.transfer_api_input,
+        json_key_prefix="transfer_input",
+        api_endpoint="PATCH ... + POST ... + POST ...",
+        empty_message="No transfer input available."
+    )
+
+elif st.session_state.show_transfer_output_modal:
+    show_info_dialog(
+        title="📤 Transfer API Output JSON",
+        modal_key="show_transfer_output_modal",
+        data=st.session_state.transfer_api_output,
+        json_key_prefix="transfer_output",
+        api_endpoint="POST ... + POST ...",
+        empty_message="No transfer output available."
+    )
+
+# =============================================================================
+# Step 9 - Footer
 # =============================================================================
 st.divider()
 st.caption("💸 Wise Transfer Manager - Built with Streamlit")
