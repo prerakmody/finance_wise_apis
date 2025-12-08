@@ -32,6 +32,7 @@ Multi-step workflow for managing Wise transfers
 ###
 """
 
+import re
 import json
 import streamlit as st
 import transfer_wise as wise
@@ -333,6 +334,15 @@ def show_create_recipient_dialog():
                 elif field_type == "text":
                      val = st.text_input(label_display, key=widget_key)
                      form_data[key] = val
+                     
+                     # Validation Logic
+                     validation_regex = field_def.get("validationRegexp")
+                     if validation_regex and val:
+                         try:
+                             if not re.match(validation_regex, val):
+                                 st.caption(f":red[Invalid format. Expected pattern: `{validation_regex}`]")
+                         except Exception:
+                             pass # Regex might be complex or incompatible
                 else:
                      val = st.text_input(label_display, key=widget_key)
                      form_data[key] = val
@@ -403,6 +413,10 @@ def show_create_recipient_dialog():
                     if details:
                         target_payload["details"] = details
                     
+                    # Debug Section (can be collapsed by default)
+                    with st.expander("Debug Payload", expanded=False):
+                        st.json(target_payload)
+
                     new_recipient, _ = wise.create_recipient(profile_id, target_payload)
                     
                     # Store result and show success
@@ -419,6 +433,12 @@ def show_create_recipient_dialog():
 
             except Exception as e:
                 st.error(f"Error creating recipient: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                     with st.expander("API Error Details"):
+                         try:
+                             st.json(e.response.json())
+                         except:
+                             st.text(e.response.text)
 
     with col_cancel:
         if st.button("Cancel", use_container_width=True):
@@ -448,7 +468,11 @@ def show_fee_breakdown_dialog():
     st.write(f"**Fee**: {fee_display}")
     st.write(f"**Delivery Estimate**: {delivery_estimate}")
     st.divider()
+    st.divider()
     st.subheader("All Payment Options")
+    # Sort options to put BALANCE first
+    payment_options.sort(key=lambda x: 0 if x.get("payIn") == "BALANCE" else 1)
+    
     for option in payment_options:
         pay_in = option.get("payIn", "Unknown")
         pay_out = option.get("payOut", "Unknown")
@@ -843,7 +867,7 @@ if st.session_state.selected_recipient and st.session_state.selected_profile:
         # Step 7.2.2 - Metrics display
         col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
-            st.metric("You Send", f"{source_amount_display} {source_currency}")
+            st.metric("You Send", f"{source_amount_display} {source_currency}", delta=f"- {fee_display}", delta_color="normal")
         with col2:
             st.metric("They Receive", f"{target_amount_display} {target_currency}")
         with col3:
