@@ -1,0 +1,1770 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "5. Wise Send Money - Platform API's",
+        "version": "1.0.0",
+        "description": ""
+    },
+    "servers": [
+        {
+            "url": "{{host}}"
+        },
+        {
+            "url": "https://www.uuidgenerator.net"
+        },
+        {
+            "url": "https://api.sandbox.transferwise.tech"
+        }
+    ],
+    "paths": {
+        "/v1/profiles": {
+            "get": {
+                "summary": "1. Get profile list",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "1. Fetch user profiles"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {},
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v3/profiles/{active-profile-id}/verification-status/bank-transfer": {
+            "post": {
+                "summary": "2. Check verification status",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "1. Fetch user profiles"
+                ],
+                "parameters": [
+                    {
+                        "name": "source_currencies",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "active-profile-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/me": {
+            "get": {
+                "summary": "3. Get current user",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "1. Fetch user profiles"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/users/{user-id}": {
+            "get": {
+                "summary": "4. Get user by id",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "1. Fetch user profiles"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "user-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v3/quotes": {
+            "post": {
+                "summary": "1. Create Anonymous Quote",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "2. Create quote"
+                ],
+                "responses": {}
+            }
+        },
+        "/v3/profiles/{active-profile-id}/quotes": {
+            "post": {
+                "summary": "2. Create Quote",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "2. Create quote"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "USD Balance to Balance",
+                        "headers": {
+                            "Date": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Transfer-Encoding": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Connection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-request-id": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-trace-id": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-content-type-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-xss-protection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "cache-control": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "pragma": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "expires": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-frame-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "content-encoding": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-envoy-upstream-service-time": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-envoy-attempt-count": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "vary": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "CF-Cache-Status": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Server": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "CF-RAY": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "alt-svc": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "sourceAmount": {
+                                            "type": "integer"
+                                        },
+                                        "guaranteedTargetAmountAllowed": {
+                                            "type": "boolean"
+                                        },
+                                        "targetAmountAllowed": {
+                                            "type": "boolean"
+                                        },
+                                        "preferredPayIn": {
+                                            "type": "string"
+                                        },
+                                        "paymentOptions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "formattedEstimatedDelivery": {
+                                                        "type": "string"
+                                                    },
+                                                    "estimatedDeliveryDelays": {
+                                                        "type": "array",
+                                                        "items": {}
+                                                    },
+                                                    "allowedProfileTypes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "feePercentage": {
+                                                        "type": "integer"
+                                                    },
+                                                    "estimatedDelivery": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "targetCurrency": {
+                                                        "type": "string"
+                                                    },
+                                                    "targetAmount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "disabled": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "sourceAmount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "sourceCurrency": {
+                                                        "type": "string"
+                                                    },
+                                                    "payOut": {
+                                                        "type": "string"
+                                                    },
+                                                    "fee": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "transferwise": {
+                                                                "type": "integer"
+                                                            },
+                                                            "payIn": {
+                                                                "type": "integer"
+                                                            },
+                                                            "discount": {
+                                                                "type": "integer"
+                                                            },
+                                                            "total": {
+                                                                "type": "integer"
+                                                            },
+                                                            "priceSetId": {
+                                                                "type": "integer"
+                                                            },
+                                                            "partner": {
+                                                                "type": "integer"
+                                                            }
+                                                        }
+                                                    },
+                                                    "price": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "priceSetId": {
+                                                                "type": "integer"
+                                                            },
+                                                            "total": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "type": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "object",
+                                                                        "properties": {
+                                                                            "amount": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "currency": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "label": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            "items": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "type": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "label": {
+                                                                            "type": "string",
+                                                                            "format": "color"
+                                                                        },
+                                                                        "value": {
+                                                                            "type": "object",
+                                                                            "properties": {
+                                                                                "amount": {
+                                                                                    "type": "integer"
+                                                                                },
+                                                                                "currency": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "label": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "payIn": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "notices": {
+                                            "type": "array",
+                                            "items": {}
+                                        },
+                                        "transferFlowConfig": {
+                                            "type": "object",
+                                            "properties": {
+                                                "highAmount": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "showFeePercentage": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "trackAsHighAmountSender": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "showEducationStep": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "offerPrefundingOption": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "overLimitThroughCs": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "overLimitThroughWiseAccount": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "rateTimestamp": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "clientId": {
+                                            "type": "string"
+                                        },
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "expirationTime": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "targetCurrency": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string"
+                                        },
+                                        "profile": {
+                                            "type": "integer"
+                                        },
+                                        "rate": {
+                                            "type": "integer"
+                                        },
+                                        "sourceCurrency": {
+                                            "type": "string"
+                                        },
+                                        "rateType": {
+                                            "type": "string"
+                                        },
+                                        "rateExpirationTime": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "payOut": {
+                                            "type": "string"
+                                        },
+                                        "guaranteedTargetAmount": {
+                                            "type": "boolean"
+                                        },
+                                        "providedAmountType": {
+                                            "type": "string"
+                                        },
+                                        "payInCountry": {
+                                            "type": "string"
+                                        },
+                                        "funding": {
+                                            "type": "string"
+                                        },
+                                        "createdTime": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "user": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "parameters": [
+                {
+                    "name": "active-profile-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v3/profiles/{personal-profile-id}/quotes/{new-quote-id}": {
+            "patch": {
+                "summary": "Update Quote",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "2. Create quote"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "personal-profile-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "new-quote-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v2/accounts/": {
+            "get": {
+                "summary": "1. Load accounts",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "3. Choose/create recipient",
+                    "3a. Select Existing"
+                ],
+                "parameters": [
+                    {
+                        "name": "currency",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/quotes/{new-quote-id}/account-requirements": {
+            "get": {
+                "summary": "1. Get recipient creation dynamic form",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "3. Choose/create recipient",
+                    "3b. Create new recipient"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Accept-Language",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Accept-Minor-Version",
+                        "in": "header",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-quote-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ],
+            "post": {
+                "summary": "2. Update form if any field require refresh",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "3. Choose/create recipient",
+                    "3b. Create new recipient"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {},
+                "description": "POST /account-requirements"
+            }
+        },
+        "/v1/accounts": {
+            "post": {
+                "summary": "3. Create recipient",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "3. Choose/create recipient",
+                    "3b. Create new recipient"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "USD Recipient",
+                        "headers": {
+                            "Date": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Transfer-Encoding": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Connection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-content-type-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-xss-protection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "cache-control": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "pragma": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "expires": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-frame-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "content-encoding": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-trace-id": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-envoy-upstream-service-time": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-envoy-attempt-count": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "vary": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "CF-Cache-Status": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Server": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "CF-RAY": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "alt-svc": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "business": {
+                                            "nullable": true
+                                        },
+                                        "profile": {
+                                            "type": "integer"
+                                        },
+                                        "accountHolderName": {
+                                            "type": "string"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "country": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "format": "color"
+                                        },
+                                        "details": {
+                                            "type": "object",
+                                            "properties": {
+                                                "address": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "country": {
+                                                            "type": "string"
+                                                        },
+                                                        "countryCode": {
+                                                            "type": "string"
+                                                        },
+                                                        "firstLine": {
+                                                            "type": "string"
+                                                        },
+                                                        "postCode": {
+                                                            "type": "string",
+                                                            "format": "utc-millisec"
+                                                        },
+                                                        "city": {
+                                                            "type": "string"
+                                                        },
+                                                        "state": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email"
+                                                },
+                                                "legalType": {
+                                                    "type": "string"
+                                                },
+                                                "accountHolderName": {
+                                                    "nullable": true
+                                                },
+                                                "accountNumber": {
+                                                    "type": "string",
+                                                    "format": "utc-millisec"
+                                                },
+                                                "sortCode": {
+                                                    "nullable": true
+                                                },
+                                                "abartn": {
+                                                    "type": "string",
+                                                    "format": "utc-millisec"
+                                                },
+                                                "accountType": {
+                                                    "type": "string"
+                                                },
+                                                "bankgiroNumber": {
+                                                    "nullable": true
+                                                },
+                                                "ifscCode": {
+                                                    "nullable": true
+                                                },
+                                                "bsbCode": {
+                                                    "nullable": true
+                                                },
+                                                "institutionNumber": {
+                                                    "nullable": true
+                                                },
+                                                "transitNumber": {
+                                                    "nullable": true
+                                                },
+                                                "phoneNumber": {
+                                                    "nullable": true
+                                                },
+                                                "bankCode": {
+                                                    "nullable": true
+                                                },
+                                                "russiaRegion": {
+                                                    "nullable": true
+                                                },
+                                                "routingNumber": {
+                                                    "nullable": true
+                                                },
+                                                "branchCode": {
+                                                    "nullable": true
+                                                },
+                                                "cpf": {
+                                                    "nullable": true
+                                                },
+                                                "cardToken": {
+                                                    "nullable": true
+                                                },
+                                                "idType": {
+                                                    "nullable": true
+                                                },
+                                                "idNumber": {
+                                                    "nullable": true
+                                                },
+                                                "idCountryIso3": {
+                                                    "nullable": true
+                                                },
+                                                "idValidFrom": {
+                                                    "nullable": true
+                                                },
+                                                "idValidTo": {
+                                                    "nullable": true
+                                                },
+                                                "clabe": {
+                                                    "nullable": true
+                                                },
+                                                "swiftCode": {
+                                                    "nullable": true
+                                                },
+                                                "dateOfBirth": {
+                                                    "nullable": true
+                                                },
+                                                "clearingNumber": {
+                                                    "nullable": true
+                                                },
+                                                "bankName": {
+                                                    "nullable": true
+                                                },
+                                                "branchName": {
+                                                    "nullable": true
+                                                },
+                                                "businessNumber": {
+                                                    "nullable": true
+                                                },
+                                                "province": {
+                                                    "nullable": true
+                                                },
+                                                "city": {
+                                                    "nullable": true
+                                                },
+                                                "rut": {
+                                                    "nullable": true
+                                                },
+                                                "token": {
+                                                    "nullable": true
+                                                },
+                                                "cnpj": {
+                                                    "nullable": true
+                                                },
+                                                "payinReference": {
+                                                    "nullable": true
+                                                },
+                                                "pspReference": {
+                                                    "nullable": true
+                                                },
+                                                "orderId": {
+                                                    "nullable": true
+                                                },
+                                                "idDocumentType": {
+                                                    "nullable": true
+                                                },
+                                                "idDocumentNumber": {
+                                                    "nullable": true
+                                                },
+                                                "targetProfile": {
+                                                    "nullable": true
+                                                },
+                                                "targetUserId": {
+                                                    "nullable": true
+                                                },
+                                                "taxId": {
+                                                    "nullable": true
+                                                },
+                                                "job": {
+                                                    "nullable": true
+                                                },
+                                                "nationality": {
+                                                    "nullable": true
+                                                },
+                                                "interacAccount": {
+                                                    "nullable": true
+                                                },
+                                                "bban": {
+                                                    "nullable": true
+                                                },
+                                                "town": {
+                                                    "nullable": true
+                                                },
+                                                "postCode": {
+                                                    "nullable": true
+                                                },
+                                                "language": {
+                                                    "nullable": true
+                                                },
+                                                "billerCode": {
+                                                    "nullable": true
+                                                },
+                                                "customerReferenceNumber": {
+                                                    "nullable": true
+                                                },
+                                                "prefix": {
+                                                    "nullable": true
+                                                },
+                                                "IBAN": {
+                                                    "nullable": true
+                                                },
+                                                "iban": {
+                                                    "nullable": true
+                                                },
+                                                "BIC": {
+                                                    "nullable": true
+                                                },
+                                                "bic": {
+                                                    "nullable": true
+                                                }
+                                            }
+                                        },
+                                        "user": {
+                                            "type": "integer"
+                                        },
+                                        "active": {
+                                            "type": "boolean"
+                                        },
+                                        "ownedByCustomer": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{new-recipient-id}": {
+            "get": {
+                "summary": "4. Get recipient in v2 format",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "3. Choose/create recipient",
+                    "3b. Create new recipient"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-recipient-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/refund-accounts": {
+            "post": {
+                "summary": "1. Create Refund Recipient",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "3. Choose/create recipient",
+                    "3c. Create refund recipient"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "1. Create Refund Recipient",
+                        "headers": {
+                            "Date": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Transfer-Encoding": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Connection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Server": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-request-id": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "vary": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "expires": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-newrelic-app-data": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-frame-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-content-type-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-xss-protection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "cache-control": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "pragma": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "content-encoding": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-envoy-upstream-service-time": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-envoy-attempt-count": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Sometimes we may need to refund the transfer's funds - see the [transfer status here](https://transferwise.github.io/api-docs-banks/#transferwise-for-banks-api-integration-guide-track-transfer-status) for cases when this may happen.\n\nA refund recipient is a person or institution where we will refund transfer funds to. This is not a mandatory step if your bank is using a fast local payment network as we can usually infer the refund recipient from the bank transaction that funded the transfer.\n\nBut if your bank is using a slow domestic payment network and a \"prefunded\" model, we may try to refund before we receive the funds in our bank transactions. In these instances, we require banks to inform us what are the details where to refund transfers. In order to do this we have current API\n\nThis API is identical to the regular recipient account creation. The refund recipient account id returned here is needed when creating transfers in step 3 as the field sourceAccount.\n\nThe format of the request payload for refund recipient creation will be different depending on the currency your bank will send transfers from. The above example is for GBP only. We can provide the correct format for your bank upon request.",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "currency": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "profile": {
+                                        "type": "string"
+                                    },
+                                    "accountHolderName": {
+                                        "type": "string"
+                                    },
+                                    "details": {
+                                        "type": "object",
+                                        "properties": {
+                                            "legalType": {
+                                                "type": "string"
+                                            },
+                                            "sortCode": {
+                                                "type": "string",
+                                                "format": "color"
+                                            },
+                                            "accountNumber": {
+                                                "type": "string",
+                                                "format": "utc-millisec"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/transfer-requirements": {
+            "post": {
+                "summary": "2. Get transfer extra info dynamic form",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "4. Create transfer"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/guid": {
+            "get": {
+                "summary": "4. Generate GUID for idempotency",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "4. Create transfer"
+                ],
+                "responses": {},
+                "description": "You don't have to use an API for this - you can almost certainly do it in code. This is just for testing convenience."
+            }
+        },
+        "/v1/transfers": {
+            "post": {
+                "summary": "5. Create transfer (standard flow)",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "4. Create transfer"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {},
+                "description": "A transfer is a payment order to recipient account based on a quote. Once created, a transfer needs to be funded within the next five working days. Otherwise, it will be automatically canceled."
+            },
+            "get": {
+                "summary": "List Transfers",
+                "tags": [
+                    "Send Money",
+                    "5. List Transfers"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": false,
+                        "deprecated": false,
+                        "schema": {}
+                    }
+                ],
+                "responses": {},
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/v2/profiles/{active-profile-id}/third-party-transfers": {
+            "post": {
+                "summary": "5. Create Transfer (3d Party Partner only)",
+                "tags": [
+                    "Send Money",
+                    "1. Transfer Flow",
+                    "4. Create transfer"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "active-profile-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/profiles/{active-profile-id}/transfers/{new-transfer-id}/deposit-details/bank-transfer": {
+            "get": {
+                "summary": "1. Get payin deposit details",
+                "tags": [
+                    "Send Money",
+                    "2. Fund transfer",
+                    "1. Get Pay-In Details"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "active-profile-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v3/profiles/{active-profile-id}/transfers/{new-transfer-id}/payments": {
+            "post": {
+                "summary": "1. Fund transfer",
+                "tags": [
+                    "Send Money",
+                    "2. Fund transfer",
+                    "2. Fund From Balance"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "1. Fund transfer",
+                        "headers": {
+                            "Date": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "Connection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Server": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-request-id": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-trace-id": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-2fa-approval-result": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-frame-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "expires": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-content-type-options": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-xss-protection": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "cache-control": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "pragma": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "x-envoy-upstream-service-time": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "x-envoy-attempt-count": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "vary": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string"
+                                        },
+                                        "errorCode": {
+                                            "nullable": true
+                                        },
+                                        "errorMessage": {
+                                            "nullable": true
+                                        },
+                                        "balanceTransactionId": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "The only way to fund your transfers via API is to fund them from balance.\nNote that based on the user origin this call might be the subject for SCA, more details in [API Documentation](https://api-docs.wise.com/#strong-customer-authentication)",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "parameters": [
+                {
+                    "name": "active-profile-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/transfers/{new-transfer-id}": {
+            "get": {
+                "summary": "1. Get transfer status",
+                "tags": [
+                    "Send Money",
+                    "3. Get updated transfer status"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/delivery-estimates/{new-transfer-id}": {
+            "get": {
+                "summary": "2. Get updated delivery estimation",
+                "tags": [
+                    "Send Money",
+                    "3. Get updated transfer status"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/simulation/transfers/{new-transfer-id}/processing": {
+            "get": {
+                "summary": "1. Set as processing",
+                "tags": [
+                    "Send Money",
+                    "4. Funds Status Simulation"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/simulation/transfers/{new-transfer-id}/funds_converted": {
+            "get": {
+                "summary": "2. Set as funds_converted",
+                "tags": [
+                    "Send Money",
+                    "4. Funds Status Simulation"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/simulation/transfers/{new-transfer-id}/outgoing_payment_sent": {
+            "get": {
+                "summary": "3. Set as outgoing_payment_sent",
+                "tags": [
+                    "Send Money",
+                    "4. Funds Status Simulation"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/simulation/transfers/{new-transfer-id}/bounced_back": {
+            "get": {
+                "summary": "4. Set as bounced_back",
+                "tags": [
+                    "Send Money",
+                    "4. Funds Status Simulation"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/simulation/transfers/{new-transfer-id}/funds_refunded": {
+            "get": {
+                "summary": "5. Set as funds_refunded",
+                "tags": [
+                    "Send Money",
+                    "4. Funds Status Simulation"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/transfers/{new-transfer-id}/cancel": {
+            "put": {
+                "summary": "Cancel Transfer",
+                "tags": [
+                    "Send Money",
+                    "6. Cancel Transfer"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "/v1/transfers/{new-transfer-id}/receipt.pdf": {
+            "get": {
+                "summary": "Get reciept PDF",
+                "tags": [
+                    "Send Money",
+                    "7. Get transfer receipt"
+                ],
+                "parameters": [
+                    {
+                        "name": "Authorization",
+                        "in": "header",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "parameters": [
+                {
+                    "name": "new-transfer-id",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            ]
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        }
+    }
+}
