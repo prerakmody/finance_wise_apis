@@ -37,8 +37,8 @@ import json
 import uuid
 import requests
 import streamlit as st
-import transfer_wise as wise
-from config import BASE_CURRENCY_OPTIONS, ACCOUNT_CURRENCY_OPTIONS, COUNTRY_CODE_OPTIONS, SUPPORTED_CURRENCIES
+import wise.transfer_wise as wise
+from wise.config import BASE_CURRENCY_OPTIONS, ACCOUNT_CURRENCY_OPTIONS, COUNTRY_CODE_OPTIONS, SUPPORTED_CURRENCIES
 
 # =============================================================================
 # Step 1 - Page Configuration
@@ -100,6 +100,12 @@ if "profile_balances" not in st.session_state:
     st.session_state.profile_balances = []
 if "quote_created" not in st.session_state:
     st.session_state.quote_created = False
+if "sca_challenge_type" not in st.session_state:
+    st.session_state.sca_challenge_type = None
+if "sca_one_time_token" not in st.session_state:
+    st.session_state.sca_one_time_token = None
+if "show_sca_modal" not in st.session_state:
+    st.session_state.show_sca_modal = False
 
 
 # =============================================================================
@@ -119,7 +125,9 @@ def close_all_modals(except_modal: str = None):
         "show_quote_info_modal",
         "show_quote_info_modal",
         "show_transfer_details_modal",
+        "show_transfer_details_modal",
         "show_fee_breakdown_modal",
+        "show_sca_modal",
     ]
     for key in modal_keys:
         if key != except_modal:
@@ -491,6 +499,67 @@ def show_fee_breakdown_dialog():
     if st.button("Close", use_container_width=True, key="close_fee_modal"):
         close_modal("show_fee_breakdown_modal")
         st.rerun()
+
+@st.dialog("🔐 Security Check")
+def show_sca_dialog():
+    st.info("Strong Customer Authentication is required for this transfer.")
+    
+    challenge_type = st.session_state.get("sca_challenge_type")
+    
+    if challenge_type == "PIN":
+        st.subheader("Enter your Wise PIN")
+        pin = st.text_input("PIN", type="password", help="Enter your 4-digit Wise PIN")
+        
+        if st.button("Verify & Pay", type="primary", use_container_width=True):
+            if not pin:
+                st.error("Please enter your PIN")
+                return
+
+            try:
+                profile_id = st.session_state.selected_profile["id"]
+                ott = st.session_state.sca_one_time_token
+                
+                with st.spinner("Verifying PIN..."):
+                    _, _, _ = wise.verify_pin(profile_id, ott, pin)
+                    
+                st.success("Creates Verification successful!")
+                
+                # Now proceed to fund the transfer
+                transfer_id = st.session_state.current_transfer["id"]
+                
+                with st.spinner("Processing Payment..."):
+                    fund_res, fund_url, fund_payload = wise.fund_transfer(profile_id, transfer_id, one_time_token=ott)
+                
+                st.session_state.transfer_debug_info.append({
+                    "name": "Fund Transfer (SCA Verified)",
+                    "url": fund_url,
+                    "input": fund_payload,
+                    "output": fund_res
+                })
+                
+                st.success("✅ Transfer Funded Successfully!")
+                st.json(fund_res)
+                
+                # Add to pending transfers list
+                st.session_state.pending_transfers.append(st.session_state.current_transfer)
+                
+                if st.button("Close & Finish", type="primary"):
+                    close_modal("show_sca_modal")
+                    st.rerun()
+
+            except Exception as e:
+                st.error(f"Verification or Payment Failed: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                     with st.expander("Error Details"):
+                         try:
+                             st.json(e.response.json())
+                         except:
+                             st.text(e.response.text)
+    else:
+        st.warning(f"Unsupported challenge type: {challenge_type}")
+        if st.button("Close"):
+            close_modal("show_sca_modal")
+            st.rerun()
 
 
 # =============================================================================
@@ -973,25 +1042,61 @@ if st.session_state.selected_recipient and st.session_state.selected_profile:
                 })
                 
                 transfer_id = transfer.get("id")
-
-                # Step 7.3.1.3 - Fund transfer from balance
-                current_step = "Fund Transfer"
-                funding, fund_url, fund_payload = wise.fund_transfer(profile_id, transfer_id)
-                st.session_state.transfer_debug_info.append({
-                    "name": current_step,
-                    "url": fund_url,
-                    "input": fund_payload,
-                    "output": funding
-                })
-                
-                # Step 7.3.6 - Save to pending transfers
-                transfer["targetValue"] = quote.get("targetAmount")
-                transfer["targetCurrency"] = target_currency
-                transfer["status"] = transfer.get("status", "pending")
-                st.session_state.pending_transfers.append(transfer)
                 st.session_state.current_transfer = transfer
                 
-                st.success(f"✅ Transfer created and funded! ID: {transfer_id}")
+                st.success(f"Transfer Created! ID: {transfer_id}")
+
+                # Step 7.3.2 - Initiate SCA & Fund Flow
+                # Instead of funding directly, we start the SCA session as per requirements
+                try:
+                    profile_id = st.session_state.selected_profile["id"]
+                    
+                    # 1. Start SCA Session
+                    sca_res, _ = wise.create_sca_session(profile_id)
+                    
+                    # 2. Extract OTT and Challenge
+                    ott_props = sca_res.get("oneTimeTokenProperties", {})
+                    ott = ott_props.get("oneTimeToken")
+                    challenges = ott_props.get("challenges", [])
+                    
+                    # Determine challenge type (defaulting to PIN as requested)
+                    challenge_type = None
+                    for c in challenges:
+                        if c.get("primaryChallenge", {}).get("type") == "PIN":
+                            challenge_type = "PIN"
+                            break
+                    
+                    if challenge_type == "PIN" and ott:
+                        # 3. Open SCA Modal
+                        st.session_state.sca_challenge_type = challenge_type
+                        st.session_state.sca_one_time_token = ott
+                        open_modal("show_sca_modal")
+                        st.rerun()
+                    else:
+                        # Fallback if no PIN challenge or generic flow (maybe low risk?)
+                        # Try direct funding if no challenges returned?
+                        # But user requirement implied explicit flow.
+                        # Let's try direct funding just in case.
+                        if not challenges:
+                            st.info("No SCA challenges returned. Attempting direct funding...")
+                            fund_res, fund_url, fund_payload = wise.fund_transfer(profile_id, transfer['id'])
+                            st.session_state.transfer_debug_info.append({
+                                "name": "Fund Transfer (No SCA)",
+                                "url": fund_url,
+                                "input": fund_payload,
+                                "output": fund_res
+                            })
+                            st.success("Funded without SCA!")
+                            # Step 7.3.6 - Save to pending transfers
+                            transfer["targetValue"] = quote.get("targetAmount")
+                            transfer["targetCurrency"] = target_currency
+                            transfer["status"] = transfer.get("status", "pending")
+                            st.session_state.pending_transfers.append(st.session_state.current_transfer)
+                        else:
+                            st.error(f"Unsupported SCA Challenge(s): {[c.get('primaryChallenge', {}).get('type') for c in challenges]}")
+
+                except Exception as sca_e:
+                     st.error(f"SCA Session Failed: {sca_e}")
                 
                 # Step 7.3.7 - Clear quote for next transfer
                 st.session_state.current_quote = None
@@ -1043,9 +1148,8 @@ if st.session_state.selected_recipient and st.session_state.selected_profile:
                     st.json(transfer)
             
             # Show API Details button if we have debug info
-            if st.session_state.transfer_debug_info:
-                if st.button("ℹ️ API Details", help="View input/output for all API calls"):
-                    open_modal("show_transfer_details_modal")
+            if st.button("ℹ️ API Details", help="View input/output for all API calls"):
+                open_modal("show_transfer_details_modal")
 
 
 # =============================================================================

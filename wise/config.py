@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Step 2 - API Token
-TOKEN_WISE = os.getenv("TOKEN_WISE")
+# TOKEN_WISE = os.getenv("TOKEN_WISE_BUSINESS")
+TOKEN_WISE = os.getenv("TOKEN_WISE_PERSONAL")
 
 # Step 3 - Base URL
 BASE_URL = "https://api.wise.com"  # Production API
@@ -42,6 +43,10 @@ ENDPOINT_TRANSFER_STATUS = f"{BASE_URL}/v1/transfers/{{transfer_id}}"  # .format
 ENDPOINT_TRANSFER_CANCEL = f"{BASE_URL}/v1/transfers/{{transfer_id}}/cancel"  # .format(transfer_id=...)
 ENDPOINT_TRANSFER_FUND = f"{BASE_URL}/v3/profiles/{{profile_id}}/transfers/{{transfer_id}}/payments"  # .format(...)
 ENDPOINT_DELIVERY_ESTIMATE = f"{BASE_URL}/v1/delivery-estimates/{{transfer_id}}"  # .format(transfer_id=...)
+
+# Step 5.5 - SCA (Strong Customer Authentication) endpoints
+ENDPOINT_SCA_SESSION_AUTHORISE = f"{BASE_URL}/v2/profiles/{{profile_id}}/sca-sessions/authorise" # .format(profile_id=...)
+ENDPOINT_PIN_VERIFY = f"{BASE_URL}/v2/profiles/{{profile_id}}/pin/verify" # .format(profile_id=...)
 
 # Step 6 - Supported currencies for account fetching
 SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "INR", "AUD", "CAD", "CHF", "PLN", "SEK", "NOK", "DKK"]
